@@ -1,0 +1,45 @@
+
+name: Build Muguet for iOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 120
+
+    steps:
+      - name: Download Muguet
+        uses: actions/checkout@v4
+
+      - name: Check Xcode
+        run: xcodebuild -version
+
+      - name: Install dependencies
+        run: |
+          brew install xcodegen binaryen
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          source "$HOME/.cargo/env"
+          rustup toolchain install stable
+          rustup toolchain install 1.98.1
+          rustup target add aarch64-apple-ios --toolchain 1.98.1
+
+      - name: Build Muguet IPA
+        run: |
+          source "$HOME/.cargo/env"
+          FREE=1 BUNDLE_ID=com.sergio.muguet ./make-ios.sh --ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Muguet-iOS
+          path: build/Muguet.ipa
+          if-no-files-found: error
